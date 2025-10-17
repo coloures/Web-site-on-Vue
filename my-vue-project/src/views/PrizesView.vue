@@ -1,12 +1,29 @@
 <template>
-  <RouterView />
+  <main>
+    <header><h1>Список нобелевских премий</h1></header>
+    <article>
+      <section>
+        <Table :headers="prizesData.headers" :data="prizesData.rows" />
+      </section>
+      <aside>
+        <nav>
+          <ul class="nav-bar">
+            <li><a href="#" @click.prevent="$router.push('/prizes')">Список нобелевских премий</a></li>
+            <li><a href="#" @click.prevent="$router.push('/laureats')">Список лауреатов</a></li>
+          </ul>
+        </nav>
+      </aside>
+    </article>
+    <footer><h1>Что-то тут есть</h1></footer>
+  </main>
 </template>
 
 <script setup>
-import { RouterView } from 'vue-router'
+import Table from '@/components/Table.vue'
+import { prizesData } from '@/data.js'
 </script>
 
-<style>
+<style scoped>
 * {
     margin: 0;
     padding: 0;

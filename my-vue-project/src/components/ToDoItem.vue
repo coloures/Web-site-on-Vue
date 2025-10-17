@@ -1,6 +1,12 @@
 <script setup lang="ts">
+
+type Task = {
+  name: string
+  completed: boolean
+}
+
 const props = defineProps<{
-    task: { name: string, completed: boolean }
+    task: Task
 }>()
 
 const emit = defineEmits<{
@@ -20,7 +26,7 @@ function onCheck(event: Event){
                 type="checkbox" 
                 :checked="props.task.completed"
                 @input="onCheck"
-            >
+            />
             <span :class=" { 'completed' : props.task.completed } ">{{ props.task.name }}</span>
         </span>
     </li>

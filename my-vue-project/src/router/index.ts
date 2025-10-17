@@ -1,8 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import PrizesView from '../views/PrizesView.vue'
+import LaureatsView from '../views/LaureatsView.vue'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [],
+  history: createWebHistory(),
+  routes: [
+    { path: '/', redirect: '/prizes' },
+    { path: '/prizes', component: PrizesView },
+    { path: '/laureats', component: LaureatsView }
+  ],
 })
 
 export default router
