@@ -3,7 +3,7 @@
     <header><h1>Список лауреатов</h1></header>
     <article>
       <section>
-        <Table :headers="laureatsData.headers" :data="laureatsData.rows" />
+        <Table :headers="headers" :data="rows" />
       </section>
       <aside>
         <nav>
@@ -19,8 +19,30 @@
 </template>
 
 <script setup>
-import Table from '@/components/Table.vue'
-import { laureatsData } from '@/data.js'
+import { ref, computed, onMounted, watch } from 'vue';
+import Table from '@/components/Table.vue';
+import axios from 'axios';
+
+const headers = ref(['ID', 'Имя', 'Родился', 'Умер', 'Премии']);
+const rows = ref([]);
+
+onMounted(async () => {
+  try {
+    const response = await axios.get('https://api.nobelprize.org/v1/laureate.json');
+    const laureates = response.data.laureates || [];
+
+    rows.value = laureates.map(l => [
+      l.id || '—',
+      (l.firstname || '') + ' ' + (l.surname || '—'),
+      l.born || '—',
+      l.died || '—',
+      l.prizes?.map(p => `${p.year} (${p.category})`).join('; ') || '—'
+    ]);
+  } catch (err) {
+    console.error('Ошибка загрузки лауреатов:', err);
+    rows.value = [];
+  }
+});
 </script>
 
 <style scoped>

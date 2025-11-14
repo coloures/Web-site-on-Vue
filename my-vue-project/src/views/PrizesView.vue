@@ -3,7 +3,7 @@
     <header><h1>Список нобелевских премий</h1></header>
     <article>
       <section>
-        <Table :headers="prizesData.headers" :data="prizesData.rows" />
+        <Table :headers="headers" :data="rows" />
       </section>
       <aside>
         <nav>
@@ -19,8 +19,38 @@
 </template>
 
 <script setup>
-import Table from '@/components/Table.vue'
-import { prizesData } from '@/data.js'
+import { ref, onMounted } from 'vue';
+import Table from '@/components/Table.vue';
+import axios from 'axios';
+
+const headers = ref(['Год', 'Категория', 'Лауреаты', 'Обоснование']);
+const rows = ref([]);
+
+onMounted(async () => {
+  try {
+    const response = await axios.get('https://api.nobelprize.org/v1/prize.json');
+    const prizes = response.data.prizes || [];
+
+    rows.value = prizes.map(p => [
+      p.year || '—',
+      p.category || '—',
+      p.laureates
+        ? p.laureates.map(l => 
+            (l.firstname || '') + 
+            (l.surname ? ' ' + l.surname : '')
+          ).join('; ') || '—'
+        : '—',
+      p.motivation 
+        ? p.motivation.replace(/^"|"$/g, '') // убираем кавычки в начале/конце
+        : p.overallMotivation 
+          ? p.overallMotivation.replace(/^"|"$/g, '')
+          : '—'
+    ]);
+  } catch (err) {
+    console.error('Ошибка загрузки премий:', err);
+    rows.value = []; // остаётся пустой таблицей (но не ломается)
+  }
+});
 </script>
 
 <style scoped>

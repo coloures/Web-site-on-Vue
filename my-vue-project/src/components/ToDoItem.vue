@@ -1,5 +1,7 @@
 <script setup lang="ts">
 
+// Не используется
+
 type Task = {
   name: string
   completed: boolean
