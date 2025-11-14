@@ -21,7 +21,7 @@ const nobelService = {
     });
   },
 
-  mapLaureatesToTableRows(laureates, page = 1, itemsPerPage = 10) {
+  mapLaureatesToTableRows(laureates, page = 1, itemsPerPage = 15) {
     const startIndex = (page - 1) * itemsPerPage;
     const paginated = laureates.slice(startIndex, startIndex + itemsPerPage);
 
@@ -36,7 +36,7 @@ const nobelService = {
     ]);
   },
 
-  mapPrizesToTableRows(prizes, page = 1, itemsPerPage = 10) {
+  mapPrizesToTableRows(prizes, page = 1, itemsPerPage = 15) {
     const startIndex = (page - 1) * itemsPerPage;
     const paginated = prizes.slice(startIndex, startIndex + itemsPerPage);
 

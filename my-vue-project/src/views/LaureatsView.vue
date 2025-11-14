@@ -3,8 +3,46 @@
     <header><h1>Список лауреатов</h1></header>
     <article>
       <section>
+        <div class="filters">
+          <label>
+            Поиск:
+            <input v-model="search" placeholder="Имя или фамилия" />
+          </label>
+          <label>
+            Категория:
+            <select v-model="category">
+              <option value="">Все</option>
+              <option value="physics">Физика</option>
+              <option value="chemistry">Химия</option>
+              <option value="medicine">Медицина</option>
+              <option value="literature">Литература</option>
+              <option value="peace">Мир</option>
+              <option value="economics">Экономика</option>
+            </select>
+          </label>
+            Год:
+            <input v-model="year" placeholder="Например: 2023" maxlength="4" />
+          <label>
+
+          </label>
+        </div>
+
         <Table :headers="headers" :data="rows" />
+
+        <div class="pagination" v-if="totalPages > 1">
+        <button
+          v-for="page in pageNumbers"
+          :key="page"
+          @click="goToPage(page)"
+          :class="{ active: page === currentPage }"
+          :disabled="page === '...'"
+        >
+          {{ page }}
+        </button>
+        <span class="info">Стр. {{ currentPage }} из {{ totalPages }}</span>
+      </div>  
       </section>
+
       <aside>
         <nav>
           <ul class="nav-bar">
@@ -14,111 +52,182 @@
         </nav>
       </aside>
     </article>
-    <footer><h1>Что-то тут есть</h1></footer>
+    <footer><h1>Данные: Nobel Prize API (v1)</h1></footer>
   </main>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import Table from '@/components/Table.vue';
 import axios from 'axios';
+import Table from '@/components/Table.vue';
 
-const headers = ref(['ID', 'Имя', 'Родился', 'Умер', 'Премии']);
-const rows = ref([]);
+const laureates = ref([]);
+const year = ref('');
+const search = ref('');
+const category = ref('');
+const currentPage = ref(1);
+const itemsPerPage = ref(10);
+const headers = ref(['ID', 'Имя', 'Родился', 'Умер', 'Премии']); 
+
+const filteredLaureates = computed(() => {
+  return laureates.value.filter(l => {
+    const name = (l.firstname || '') + ' ' + (l.surname || '');
+    const matchesSearch = !search.value.trim() || 
+      name.toLowerCase().includes(search.value.toLowerCase());
+    
+    const matchesCategory = !category.value || 
+      l.prizes?.some(p => p.category === category.value);
+    
+    const matchesYear = !year.value.trim() || 
+      l.prizes?.some(p => String(p.year).includes(year.value));
+
+    return matchesSearch && matchesCategory && matchesYear;
+  });
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(filteredLaureates.value.length / itemsPerPage.value);
+});
+
+const formatDied = (date) => {
+  if (!date || date === '0000-00-00') return 'Жив';
+  return date;
+};
+
+const rows = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const paginated = filteredLaureates.value.slice(start, start + itemsPerPage.value);
+  return paginated.map(l => [
+    l.id || '—',
+    (l.firstname || '') + (l.surname ? ' ' + l.surname : '—'),
+    l.born || '—',
+    formatDied(l.died), 
+    l.prizes?.map(p => `${p.year} (${p.category})`).join('; ') || '—'
+  ]);
+});
+
+const pageNumbers = computed(() => {
+  const total = totalPages.value;
+  const current = currentPage.value;
+  const delta = 2; 
+  const range = [];
+
+  for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+    range.push(i);
+  }
+
+  const result = [];
+  let prev = 0;
+
+  range.forEach(page => {
+    if (page - prev > 1) result.push('...');
+    result.push(page);
+    prev = page;
+  });
+
+  if (prev < total) result.push('...');
+
+  if (result[0] !== 1) result.unshift(1);
+  if (result[result.length - 1] !== total && total > 1) result.push(total);
+
+  return [...new Set(result)];
+});
+
+watch([search, category], () => {
+  currentPage.value = 1;
+});
+
+watch([search, category, year], () => {
+  currentPage.value = 1;
+});
+
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+};
 
 onMounted(async () => {
   try {
-    const response = await axios.get('https://api.nobelprize.org/v1/laureate.json');
-    const laureates = response.data.laureates || [];
-
-    rows.value = laureates.map(l => [
-      l.id || '—',
-      (l.firstname || '') + ' ' + (l.surname || '—'),
-      l.born || '—',
-      l.died || '—',
-      l.prizes?.map(p => `${p.year} (${p.category})`).join('; ') || '—'
-    ]);
+    const res = await axios.get('https://api.nobelprize.org/v1/laureate.json');
+    laureates.value = res.data.laureates || [];
   } catch (err) {
     console.error('Ошибка загрузки лауреатов:', err);
-    rows.value = [];
   }
 });
 </script>
 
 <style scoped>
-* {
-    margin: 0;
-    padding: 0;
-}
-
-html, body {
-    height: 100%;
-}
-main {
-    overflow: auto;
-}
+* { margin: 0; padding: 0; }
+html, body { height: 100%; }
+main { overflow: auto; }
 header {
-    overflow: auto;
-    width: 100%;
-    height: 100px;
-    background-color: gainsboro;
+  overflow: auto; width: 100%; height: 100px; background-color: gainsboro;
 }
-
-header h1 {
-    margin-top: 20px;
-    margin-left: 20px;
-}
-
-article {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    height: 80vh;
-}
-
-section {
-    padding-top: 50px;
-}
-
+header h1 { margin-top: 20px; margin-left: 20px; }
+article { display: grid; grid-template-columns: 2fr 1fr; }
+section { margin-top: 50px; }
 aside {
-    background-color: bisque;
-    height: 100%;
-    padding-top: 50px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
+  background-color: bisque; height: 100%; padding-top: 50px;
+  text-align: center; display: flex; flex-direction: column;
 }
-
-.nav-bar {
-    display: flex;
-    flex-direction: column;
-    list-style: none;
-}
-
-table {
-    border-collapse: collapse;
-    margin: 0 auto;
-}
-
-th {
-    padding: 5px;
-}
-
+.nav-bar { display: flex; flex-direction: column; list-style: none; }
+table { border-collapse: collapse; margin: 0 auto; }
+th { padding: 5px; }
 footer {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100px;
-    background-color: gainsboro;
+  position: fixed; left: 0; bottom: 0; width: 100%;
+  height: 100px; background-color: gainsboro;
+}
+table tbody tr:nth-child(odd) { background-color: blanchedalmond; }
+table tbody tr:nth-child(even) { background-color: cornsilk; }
+
+.filters {
+  margin: 1rem 2rem;
+  padding: 0.5rem;
+  background: #f5f5f5;
+  border-radius: 4px;
+  /* max-width: 700px; */
+}
+.filters label {
+  display: inline-block;
+  margin-right: 1rem;
+  margin-bottom: 0.5rem;
+}
+.filters input,
+.filters select {
+  margin-left: 0.5rem;
+  padding: 0.25rem;
 }
 
-table tbody tr:nth-child(odd) 
-{
-    background-color: blanchedalmond;
+.pagination {
+  margin-top: 1rem;
+  text-align: center;
 }
-
-table tbody tr:nth-child(even) 
-{
-    background-color: cornsilk;
+.pagination button {
+  margin: 0 0.1rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  background: #eee;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pagination button.active {
+  background: #007bff;
+  color: white;
+  border-color: #0056b3;
+}
+.pagination .dots {
+  background: none;
+  border: none;
+  cursor: default;
+}
+.pagination .info {
+  margin-left: 1rem;
+  font-weight: bold;
 }
 </style>
