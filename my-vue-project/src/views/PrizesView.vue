@@ -55,7 +55,7 @@
         </nav>
       </aside>
     </article>
-    <footer><h1>Данные: Nobel Prize API (v1)</h1></footer>
+    <footer><h1>Что-то тут есть</h1></footer>
   </main>
 </template>
 
