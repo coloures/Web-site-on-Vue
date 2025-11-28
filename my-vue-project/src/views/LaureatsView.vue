@@ -58,8 +58,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import axios from 'axios';
 import Table from '@/components/Table.vue';
+import nobelService from '@/services/nobelService';
 
 const laureates = ref([]);
 const year = ref('');
@@ -70,18 +70,10 @@ const itemsPerPage = ref(10);
 const headers = ref(['ID', 'Имя', 'Родился', 'Умер', 'Премии']); 
 
 const filteredLaureates = computed(() => {
-  return laureates.value.filter(l => {
-    const name = (l.firstname || '') + ' ' + (l.surname || '');
-    const matchesSearch = !search.value.trim() || 
-      name.toLowerCase().includes(search.value.toLowerCase());
-    
-    const matchesCategory = !category.value || 
-      l.prizes?.some(p => p.category === category.value);
-    
-    const matchesYear = !year.value.trim() || 
-      l.prizes?.some(p => String(p.year).includes(year.value));
-
-    return matchesSearch && matchesCategory && matchesYear;
+  return nobelService.filterLaureates(laureates.value, {
+    search: search.value,
+    category: category.value,
+    year: year.value
   });
 });
 
@@ -133,10 +125,6 @@ const pageNumbers = computed(() => {
   return [...new Set(result)];
 });
 
-watch([search, category], () => {
-  currentPage.value = 1;
-});
-
 watch([search, category, year], () => {
   currentPage.value = 1;
 });
@@ -147,13 +135,11 @@ const goToPage = (page) => {
   }
 };
 
-onMounted(async () => {
-  try {
-    const res = await axios.get('https://api.nobelprize.org/v1/laureate.json');
-    laureates.value = res.data.laureates || [];
-  } catch (err) {
-    console.error('Ошибка загрузки лауреатов:', err);
-  }
+onMounted(() => {
+  nobelService.fetchLaureates()
+    .then(data => {
+      laureates.value = data;
+    });
 });
 </script>
 
@@ -186,7 +172,6 @@ table tbody tr:nth-child(even) { background-color: cornsilk; }
   padding: 0.5rem;
   background: #f5f5f5;
   border-radius: 4px;
-  /* max-width: 700px; */
 }
 .filters label {
   display: inline-block;

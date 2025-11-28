@@ -61,8 +61,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import axios from 'axios';
 import Table from '@/components/Table.vue';
+import nobelService from '@/services/nobelService';
 
 const prizes = ref([]);
 const category = ref('');
@@ -74,19 +74,11 @@ const itemsPerPage = ref(10);
 const headers = ref(['Год', 'Категория', 'Лауреаты', 'Обоснование']);
 
 const filteredPrizes = computed(() => {
-  return prizes.value.filter(p => {
-    const matchesCategory = !category.value || p.category === category.value;
-    const matchesYear = !year.value.trim() || String(p.year).includes(year.value);
-    const matchesSearch = !search.value.trim() || 
-      p.laureates?.some(l => {
-        const fullName = (l.firstname || '') + ' ' + (l.surname || '');
-        return fullName.toLowerCase().includes(search.value.toLowerCase());
-      });
-    const motivationText = (p.motivation || p.overallMotivation || '').toLowerCase();
-    const matchesMotivation = !motivationSearch.value.trim() || 
-      motivationText.includes(motivationSearch.value.toLowerCase());
-
-    return matchesCategory && matchesYear && matchesSearch && matchesMotivation;
+  return nobelService.filterPrizes(prizes.value, {
+    category: category.value,
+    year: year.value,
+    search: search.value,
+    motivationSearch: motivationSearch.value
   });
 });
 
@@ -129,14 +121,6 @@ const pageNumbers = computed(() => {
   return pages;
 });
 
-watch([category, year], () => {
-  currentPage.value = 1;
-});
-
-watch([category, year, search], () => {
-  currentPage.value = 1;
-});
-
 watch([category, year, search, motivationSearch], () => {
   currentPage.value = 1;
 });
@@ -147,13 +131,11 @@ const goToPage = (page) => {
   }
 };
 
-onMounted(async () => {
-  try {
-    const res = await axios.get('https://api.nobelprize.org/v1/prize.json');
-    prizes.value = res.data.prizes || [];
-  } catch (err) {
-    console.error('Ошибка загрузки премий:', err);
-  }
+onMounted(() => {
+  nobelService.fetchPrizes()
+    .then(data => {
+      prizes.value = data;
+    });
 });
 </script>
 
@@ -185,7 +167,6 @@ table tbody tr:nth-child(even) { background-color: cornsilk; }
   padding: 0.5rem;
   background: #f5f5f5;
   border-radius: 4px;
-  /* max-width: 500px; */
 }
 .filters label {
   display: inline-block;

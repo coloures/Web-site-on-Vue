@@ -1,55 +1,56 @@
-import apiClient from './apiClient';
+import AjaxService from './AjaxService.js';
 
-const nobelService = {
-  async fetchLaureates() {
-    const res = await apiClient.get('/laureate.json');
-    return res.data.laureates || [];
-  },
+const apiClient = new AjaxService('https://api.nobelprize.org/v1');
 
-  async fetchPrizes() {
-    const res = await apiClient.get('/prize.json');
-    return res.data.prizes || [];
-  },
+class NobelService {
+  fetchLaureates() {
+    return apiClient.get('/laureate.json')
+      .then(response => response.data.laureates || [])
+      .catch(error => {
+        console.error('Error fetching laureates:', error);
+        return [];
+      });
+  }
 
-  filterLaureates(laureates, { fullname = '', category = '', year = '' }) {
-    return laureates.filter(la => {
-      const name = (l.firstname || '') + ' ' + (l.surname || '');
-      const matchesName = !fullname.trim() || name.toLowerCase().includes(fullname.toLowerCase());
-      const matchesCategory = !category || la?.prizes?.some(p => p.category === category);
-      const matchesYear = !year || la?.prizes?.some(p => String(p.year).includes(year));
+  fetchPrizes() {
+    return apiClient.get('/prize.json')
+      .then(response => response.data.prizes || [])
+      .catch(error => {
+        console.error('Error fetching prizes:', error);
+        return [];
+      });
+  }
+
+  filterLaureates(laureates, filters) {
+    return laureates.filter(laureate => {
+      const fullName = (laureate.firstname || '') + ' ' + (laureate.surname || '');
+      const matchesName = !filters.search || 
+        fullName.toLowerCase().includes(filters.search.toLowerCase());
+      const matchesCategory = !filters.category || 
+        (laureate.prizes && laureate.prizes.some(p => p.category === filters.category));
+      const matchesYear = !filters.year || 
+        (laureate.prizes && laureate.prizes.some(p => String(p.year).includes(filters.year)));
+      
       return matchesName && matchesCategory && matchesYear;
     });
-  },
-
-  mapLaureatesToTableRows(laureates, page = 1, itemsPerPage = 15) {
-    const startIndex = (page - 1) * itemsPerPage;
-    const paginated = laureates.slice(startIndex, startIndex + itemsPerPage);
-
-    return paginated.map(l => [
-      l.id || '—',
-      (l.firstname || '') + ' ' + (l.surname || '—'),
-      l.born || '—',
-      l.died || '—',
-      (l.prizes && l.prizes.length > 0)
-        ? l.prizes.map(p => `${p.year} (${p.category})`).join('; ')
-        : '—'
-    ]);
-  },
-
-  mapPrizesToTableRows(prizes, page = 1, itemsPerPage = 15) {
-    const startIndex = (page - 1) * itemsPerPage;
-    const paginated = prizes.slice(startIndex, startIndex + itemsPerPage);
-
-    return paginated.map(p => [
-      p.year,
-      p.category,
-      p.prizeAmount || '—',
-      (p.laureates && p.laureates.length > 0)
-        ? p.laureates.map(l => (l.firstname || '') + ' ' + (l.surname || '')).join(', ')
-        : '—',
-      p.motivation || '—'
-    ]);
   }
-};
 
-export default nobelService;
+  filterPrizes(prizes, filters) {
+    return prizes.filter(prize => {
+      const matchesCategory = !filters.category || prize.category === filters.category;
+      const matchesYear = !filters.year || String(prize.year).includes(filters.year);
+      const matchesSearch = !filters.search || 
+        (prize.laureates && prize.laureates.some(l => {
+          const fullName = (l.firstname || '') + ' ' + (l.surname || '');
+          return fullName.toLowerCase().includes(filters.search.toLowerCase());
+        }));
+      const motivationText = (prize.motivation || prize.overallMotivation || '').toLowerCase();
+      const matchesMotivation = !filters.motivationSearch || 
+        motivationText.includes(filters.motivationSearch.toLowerCase());
+
+      return matchesCategory && matchesYear && matchesSearch && matchesMotivation;
+    });
+  }
+}
+
+export default new NobelService();
